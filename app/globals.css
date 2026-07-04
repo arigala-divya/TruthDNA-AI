@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark-committed cinematic theme. Chart colors follow the validated dark palette. */
+  --background: #0d0d0d;
+  --surface-1: #1a1a19;
+  --foreground: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --hairline: rgba(255, 255, 255, 0.1);
+  --gridline: #2c2c2a;
+
+  --series-1: #3987e5; /* validated dark categorical slot 1 */
+  --accent: #3987e5;
+  --accent-glow: rgba(57, 135, 229, 0.35);
+
+  /* status palette — always paired with icon + label, never color alone */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface-1);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--accent);
+  --color-good: var(--status-good);
+  --color-warning: var(--status-warning);
+  --color-serious: var(--status-serious);
+  --color-critical: var(--status-critical);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+
+/* ————— glass card ————— */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 1rem;
+}
+
+/* ————— gradient headline ————— */
+.gradient-text {
+  background: linear-gradient(100deg, #ffffff 10%, #86b6ef 45%, #3987e5 70%, #9085e9 95%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-drift 8s ease-in-out infinite;
+}
+
+@keyframes gradient-drift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* ————— news ticker rows ————— */
+.ticker-row {
+  display: flex;
+  gap: 3rem;
+  width: max-content;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker-scroll var(--ticker-duration, 80s) linear infinite;
+}
+
+.ticker-row.reverse {
+  animation-direction: reverse;
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ————— pulsing investigation dot ————— */
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(57, 135, 229, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(57, 135, 229, 0);
+  }
+}
+
+.pulse-dot {
+  animation: pulse-ring 1.6s cubic-bezier(0.66, 0, 0, 1) infinite;
+}
+
+/* ————— scan line on the active progress step ————— */
+@keyframes scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.scan-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(57, 135, 229, 0.18), transparent);
+  transform: translateX(-100%);
+  animation: scan 1.8s ease-in-out infinite;
+}
+
+/* ————— glow button ————— */
+.glow-button {
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 24px rgba(57, 135, 229, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.glow-button:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 0 44px rgba(57, 135, 229, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.glow-button:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-row,
+  .gradient-text,
+  .pulse-dot,
+  .scan-line::after {
+    animation: none;
+  }
+}

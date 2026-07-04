@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Investigation {
+  id          String    @id @default(cuid())
+  inputType   String // "url" | "text"
+  url         String?
+  articleText String?   @db.Text
+  title       String?
+  author      String?
+  siteName    String?
+  publishedAt DateTime?
+  status      String    @default("pending") // pending | extracting | claims | searching | comparing | consensus | manipulation | reporting | complete | failed
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  claims Claim[]
+  report Report?
+
+  @@index([status])
+}
+
+model Claim {
+  id              String  @id @default(cuid())
+  investigationId String
+  text            String  @db.Text
+  category        String // Fact | Opinion | Prediction | Statistic | Quotation | Speculation | Allegation
+  verdict         String? // Supported | Contradicted | Partially Supported | Insufficient Evidence
+  confidence      Float?
+  reasoning       String? @db.Text
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  evidence      Evidence[]
+
+  @@index([investigationId])
+}
+
+model Evidence {
+  id            String    @id @default(cuid())
+  claimId       String
+  source        String // URL
+  domain        String
+  title         String?
+  text          String    @db.Text
+  publishedDate DateTime?
+  similarity    Float? // cosine similarity of embeddings
+  relevance     Float? // Tavily relevance score
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+model Report {
+  id                String   @id @default(cuid())
+  investigationId   String   @unique
+  scores            Json // six TruthDNA metrics, 0-100
+  explanation       Json // per-metric explanations
+  manipulation      Json // nine manipulation-technique scores
+  missingContext    Json // array of missing context items
+  sourceCredibility Json // source trust breakdown
+  overallVerdict    String
+  summary           String   @db.Text
+  createdAt         DateTime @default(now())
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+}
