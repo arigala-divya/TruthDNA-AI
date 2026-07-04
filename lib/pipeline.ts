@@ -81,7 +81,8 @@ export async function runInvestigation(id: string, input: InvestigateInput): Pro
 
     // 4. Compare evidence and store verdicts
     await setStatus(id, "comparing");
-    const compareLimit = pLimit(3);
+    // free-tier Gemini allows ~10 requests/min — keep LLM parallelism low
+    const compareLimit = pLimit(2);
     const compared = await Promise.all(
       claims.map((c, i) =>
         compareLimit(async () => {

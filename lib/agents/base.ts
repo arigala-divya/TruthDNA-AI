@@ -1,22 +1,30 @@
 import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
+import { zodResponseFormat } from "openai/helpers/zod";
 import type { ZodType } from "zod";
+
+/** All agents run on Google Gemini through its OpenAI-compatible endpoint,
+ *  so the OpenAI SDK's structured-output helpers keep working unchanged. */
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
 
 let client: OpenAI | null = null;
 
-export function getOpenAI(): OpenAI {
+export function getLLM(): OpenAI {
   if (!client) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
-    client = new OpenAI({ apiKey });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+    client = new OpenAI({ apiKey, baseURL: GEMINI_BASE_URL });
   }
   return client;
 }
 
-export const AGENT_MODEL = process.env.OPENAI_MODEL || "gpt-4o";
-export const EMBEDDING_MODEL = "text-embedding-3-small";
+export const AGENT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
+
+function isRateLimit(err: unknown): boolean {
+  return err instanceof OpenAI.APIError && err.status === 429;
+}
 
 function isRetryable(err: unknown): boolean {
   if (err instanceof OpenAI.APIError) {
@@ -25,8 +33,9 @@ function isRetryable(err: unknown): boolean {
   return false;
 }
 
-/** Call the model via the Responses API with a Zod-enforced structured output.
- *  Retries with exponential backoff on rate limits and transient server errors. */
+/** Call the model with a Zod-enforced structured output. Free-tier Gemini has
+ *  tight per-minute quotas, so 429s back off long enough to enter the next
+ *  rate-limit window instead of burning retries inside the same one. */
 export async function callAgent<T>(opts: {
   agentName: string;
   system: string;
@@ -34,19 +43,21 @@ export async function callAgent<T>(opts: {
   schema: ZodType<T>;
   temperature?: number;
 }): Promise<T> {
-  const openai = getOpenAI();
+  const llm = getLLM();
   let lastError: unknown;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const response = await openai.responses.parse({
+      const completion = await llm.chat.completions.parse({
         model: AGENT_MODEL,
-        instructions: opts.system,
-        input: opts.input,
+        messages: [
+          { role: "system", content: opts.system },
+          { role: "user", content: opts.input },
+        ],
         temperature: opts.temperature ?? 0.2,
-        text: { format: zodTextFormat(opts.schema, opts.agentName) },
+        response_format: zodResponseFormat(opts.schema, opts.agentName),
       });
-      const parsed = response.output_parsed;
+      const parsed = completion.choices[0]?.message?.parsed;
       if (parsed === null || parsed === undefined) {
         throw new Error(`${opts.agentName} returned no parsable output`);
       }
@@ -54,7 +65,10 @@ export async function callAgent<T>(opts: {
     } catch (err) {
       lastError = err;
       if (attempt < MAX_RETRIES - 1 && isRetryable(err)) {
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt + Math.random() * 500));
+        const delay = isRateLimit(err)
+          ? 10_000 * (attempt + 1) + Math.random() * 2000
+          : 1000 * 2 ** attempt + Math.random() * 500;
+        await new Promise((r) => setTimeout(r, delay));
         continue;
       }
       throw err;
@@ -66,8 +80,8 @@ export async function callAgent<T>(opts: {
 /** Embed a batch of texts. Returns one vector per input, in order. */
 export async function embed(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
-  const openai = getOpenAI();
-  const res = await openai.embeddings.create({
+  const llm = getLLM();
+  const res = await llm.embeddings.create({
     model: EMBEDDING_MODEL,
     input: texts.map((t) => t.slice(0, 8000)),
   });

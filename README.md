@@ -8,7 +8,7 @@
 
 - **Next.js 15** (App Router, TypeScript) · Tailwind CSS 4 · Framer Motion · Recharts
 - **Prisma 6** + PostgreSQL (Neon)
-- **OpenAI** `gpt-4o` (Responses API + Zod structured outputs) + `text-embedding-3-small`
+- **Google Gemini** `gemini-2.5-flash` (OpenAI-compatible API + Zod structured outputs) + `gemini-embedding-001`
 - **Tavily** search API for evidence retrieval
 - **Upstash Redis** (optional) for rate limiting + caching
 
@@ -29,7 +29,7 @@
 
 ```bash
 npm install
-cp .env.example .env        # fill in OPENAI_API_KEY, TAVILY_API_KEY, DATABASE_URL
+cp .env.example .env        # fill in GEMINI_API_KEY, TAVILY_API_KEY, DATABASE_URL
 npx prisma migrate dev      # creates tables (needs DATABASE_URL)
 npm run dev
 ```
@@ -41,7 +41,7 @@ Open http://localhost:3000, paste a news URL, hit **🔎 Start Investigation**.
 1. **Database** — create a free [Neon](https://neon.tech) Postgres project; copy the pooled connection string.
 2. **Push to GitHub** and import the repo at [vercel.com/new](https://vercel.com/new).
 3. **Environment variables** (Project → Settings → Environment Variables):
-   - `OPENAI_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`
+   - `GEMINI_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`
    - optional: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (enables 10/hour/IP rate limiting + result caching)
 4. **Migrate** — run once locally against the production DB:
    ```bash
