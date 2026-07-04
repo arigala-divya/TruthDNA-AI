@@ -21,12 +21,12 @@ const claimSchema = z.object({
       })
     )
     .min(1)
-    .max(10),
+    .max(8),
 });
 
 const SYSTEM = `You are the Claim Extraction Agent of TruthDNA, an automated news fact-checking system.
 
-Extract the 5-10 most significant, checkable claims from the article. Rules:
+Extract the 5-8 most significant, checkable claims from the article. Rules:
 - Each claim must be a single, self-contained, verifiable statement. Resolve pronouns and add missing context (who/what/when/where) so the claim stands alone.
 - Prioritize claims central to the article's thesis; skip trivia.
 - Categorize each claim: Fact (asserted as objectively true), Opinion, Prediction, Statistic (numeric assertion), Quotation (attributed statement), Speculation, or Allegation (unproven accusation).

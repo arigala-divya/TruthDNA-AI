@@ -8,7 +8,7 @@
 
 - **Next.js 15** (App Router, TypeScript) · Tailwind CSS 4 · Framer Motion · Recharts
 - **Prisma 6** + PostgreSQL (Neon)
-- **Google Gemini** `gemini-2.5-flash` (OpenAI-compatible API + Zod structured outputs) + `gemini-embedding-001`
+- **Google Gemini** `gemini-2.5-flash-lite` (OpenAI-compatible API + Zod structured outputs) + `gemini-embedding-001`
 - **Tavily** search API for evidence retrieval
 - **Upstash Redis** (optional) for rate limiting + caching
 

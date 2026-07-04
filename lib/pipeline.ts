@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { isRateLimit } from "./agents/base";
 import { extractArticle, ScrapeError } from "./scraper";
 import { extractClaims } from "./agents/claimAgent";
 import { retrieveEvidence } from "./agents/retrievalAgent";
@@ -117,17 +118,17 @@ export async function runInvestigation(id: string, input: InvestigateInput): Pro
     // 5. Consensus: cross-source context + credibility analysis
     await setStatus(id, "consensus");
     const sourceDomain = article.url ? new URL(article.url).hostname.replace(/^www\./, "") : null;
-    const [missingContext, source] = await Promise.all([
-      findMissingContext(
-        article.text,
-        claims.map((c) => c.text)
-      ),
-      assessSource({
-        domain: sourceDomain,
-        isHttps: article.url?.startsWith("https:") ?? false,
-        hasAuthor: !!article.author,
-      }),
-    ]);
+    // sequential, not parallel — free-tier quotas are per-minute and the
+    // comparison phase has usually just drained the window
+    const missingContext = await findMissingContext(
+      article.text,
+      claims.map((c) => c.text)
+    );
+    const source = await assessSource({
+      domain: sourceDomain,
+      isHttps: article.url?.startsWith("https:") ?? false,
+      hasAuthor: !!article.author,
+    });
 
     // 6. Manipulation analysis
     await setStatus(id, "manipulation");
@@ -163,8 +164,9 @@ export async function runInvestigation(id: string, input: InvestigateInput): Pro
     await setStatus(id, "complete");
   } catch (err) {
     console.error(`Investigation ${id} failed:`, err);
-    const message =
-      err instanceof ScrapeError
+    const message = isRateLimit(err)
+      ? "The AI model's free-tier rate limit was exhausted mid-investigation. Wait a minute or two and try again — or upgrade the Gemini API plan for faster runs."
+      : err instanceof ScrapeError
         ? err.message
         : "The investigation hit an unexpected error. Please try again.";
     await db.investigation

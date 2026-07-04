@@ -17,16 +17,18 @@ export function getLLM(): OpenAI {
   return client;
 }
 
-export const AGENT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export const AGENT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 export const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 
-const MAX_RETRIES = 4;
+const MAX_RETRIES = 5;
 
-function isRateLimit(err: unknown): boolean {
+export function isRateLimit(err: unknown): boolean {
   return err instanceof OpenAI.APIError && err.status === 429;
 }
 
 function isRetryable(err: unknown): boolean {
+  // network blips (DNS, resets) are worth retrying too
+  if (err instanceof OpenAI.APIConnectionError) return true;
   if (err instanceof OpenAI.APIError) {
     return err.status === 429 || (err.status !== undefined && err.status >= 500);
   }
@@ -65,8 +67,9 @@ export async function callAgent<T>(opts: {
     } catch (err) {
       lastError = err;
       if (attempt < MAX_RETRIES - 1 && isRetryable(err)) {
+        // free-tier quotas reset per minute — wait past the window, not inside it
         const delay = isRateLimit(err)
-          ? 10_000 * (attempt + 1) + Math.random() * 2000
+          ? 20_000 * (attempt + 1) + Math.random() * 3000
           : 1000 * 2 ** attempt + Math.random() * 500;
         await new Promise((r) => setTimeout(r, delay));
         continue;
